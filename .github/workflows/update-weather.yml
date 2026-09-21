@@ -21,6 +21,7 @@ jobs:
           import html
           import json
           import re
+          import urllib.parse
           import urllib.request
           from datetime import datetime
 
@@ -69,11 +70,67 @@ jobs:
           gust_kmh = number(gust.group(1)) if gust else None
           gust_direction = gust.group(2).upper() if gust else None
 
-          # Niederschlag: WeeWX liefert die Gesamtmenge sowie die aktuelle
-          # und maximale Regenrate in cm bzw. cm/h.
           rain_total_cm = number(extract(r"Regen\s+([0-9]+(?:[,.][0-9]+)?)\s*cm\s+Gesamt"))
           rain_rate_cm_h = number(extract(r"Regen-Rate\s+([0-9]+(?:[,.][0-9]+)?)\s*cm/h"))
           max_rain_rate_cm_h = number(extract(r"Max Regen-Rate\s+([0-9]+(?:[,.][0-9]+)?)\s*cm/h"))
+
+          # Aktueller Wetterzustand aus dem DWD-ICON-Modell über Open-Meteo.
+          # Die verwendeten weather_code-Werte entsprechen den WMO-Wettercodes.
+          lat = 51.527833
+          lon = 13.831333
+          params = urllib.parse.urlencode({
+              "latitude": lat,
+              "longitude": lon,
+              "current": "weather_code,is_day",
+              "timezone": "Europe/Berlin"
+          })
+          weather_url = f"https://api.open-meteo.com/v1/dwd-icon?{params}"
+          weather_req = urllib.request.Request(
+              weather_url,
+              headers={"User-Agent": "Lagezentrum-Lauchhammer/1.0"}
+          )
+          with urllib.request.urlopen(weather_req, timeout=30) as response:
+              model_data = json.loads(response.read().decode("utf-8"))
+
+          current_model = model_data.get("current", {})
+          weather_code = current_model.get("weather_code")
+          is_day = current_model.get("is_day")
+
+          weather_map = {
+              0: ("Klar", "☀️"),
+              1: ("Heiter", "🌤️"),
+              2: ("Teilweise bewölkt", "⛅"),
+              3: ("Bewölkt", "☁️"),
+              45: ("Nebel", "🌫️"),
+              48: ("Nebel", "🌫️"),
+              51: ("Leichter Nieselregen", "🌦️"),
+              53: ("Nieselregen", "🌦️"),
+              55: ("Starker Nieselregen", "🌧️"),
+              56: ("Gefrierender Nieselregen", "🌧️"),
+              57: ("Starker gefrierender Nieselregen", "🌧️"),
+              61: ("Leichter Regen", "🌧️"),
+              63: ("Regen", "🌧️"),
+              65: ("Starker Regen", "🌧️"),
+              66: ("Leichter gefrierender Regen", "🌧️"),
+              67: ("Starker gefrierender Regen", "🌧️"),
+              71: ("Leichter Schneefall", "❄️"),
+              73: ("Schneefall", "❄️"),
+              75: ("Starker Schneefall", "❄️"),
+              77: ("Schneekörner", "🌨️"),
+              80: ("Leichte Regenschauer", "🌦️"),
+              81: ("Regenschauer", "🌦️"),
+              82: ("Starke Regenschauer", "🌧️"),
+              85: ("Leichte Schneeschauer", "🌨️"),
+              86: ("Starke Schneeschauer", "🌨️"),
+              95: ("Gewitter", "⛈️"),
+              96: ("Gewitter mit Hagel", "⛈️"),
+              99: ("Starkes Gewitter mit Hagel", "⛈️")
+          }
+
+          weather_description, weather_icon = weather_map.get(
+              weather_code,
+              ("Wetterlage unbekannt", "🌡️")
+          )
 
           missing = []
           for name, value in [
@@ -84,7 +141,8 @@ jobs:
               ("Böen", gust_kmh),
               ("Regen", rain_total_cm),
               ("Regen-Rate", rain_rate_cm_h),
-              ("Max Regen-Rate", max_rain_rate_cm_h)
+              ("Max Regen-Rate", max_rain_rate_cm_h),
+              ("Wettercode", weather_code)
           ]:
               if value is None:
                   missing.append(name)
@@ -96,8 +154,8 @@ jobs:
               "location": {
                   "name": "Kostebrau, Lauchhammer",
                   "city": "Lauchhammer",
-                  "latitude": 51.527833,
-                  "longitude": 13.831333
+                  "latitude": lat,
+                  "longitude": lon
               },
               "station": {
                   "name": "DB0LS, Kostebrau",
@@ -107,6 +165,13 @@ jobs:
               "source": {
                   "provider": "Wetterstation Kostebrau / Lausitzlink",
                   "url": url
+              },
+              "weather": {
+                  "code": weather_code,
+                  "description": weather_description,
+                  "icon": weather_icon,
+                  "isDay": is_day,
+                  "provider": "DWD ICON via Open-Meteo"
               },
               "measuredAt": (
                   datetime.strptime(measured, "%d.%m.%Y %H:%M:%S").isoformat()
@@ -136,5 +201,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add weather.json
           git diff --cached --quiet && exit 0
-          git commit -m "Aktualisiere Wetterdaten Kostebrau"
+          git commit -m "Ergänzt aktuelle Wetterlage"
           git push
