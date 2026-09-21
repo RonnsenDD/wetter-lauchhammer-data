@@ -1,0 +1,127 @@
+name: Wetterdaten Kostebrau aktualisieren
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-weather:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Wetterdaten von Kostebrau abrufen
+        run: |
+          python3 - <<'PY'
+          import html
+          import json
+          import re
+          import urllib.request
+          from datetime import datetime
+          
+          url = "https://wetter.lausitzlink.de/"
+          req = urllib.request.Request(
+              url,
+              headers={"User-Agent": "Lagezentrum-Lauchhammer/1.0"}
+          )
+          with urllib.request.urlopen(req, timeout=30) as response:
+              raw = response.read().decode("utf-8", errors="replace")
+          
+          text = re.sub(r"(?is)<script.*?</script>", " ", raw)
+          text = re.sub(r"(?is)<style.*?</style>", " ", text)
+          text = re.sub(r"(?s)<[^>]+>", " ", text)
+          text = html.unescape(text)
+          text = re.sub(r"\s+", " ", text).strip()
+          
+          def extract(pattern):
+              m = re.search(pattern, text, re.I | re.S)
+              return m.group(1).strip() if m else None
+          
+          def number(value):
+              if value is None:
+                  return None
+              try:
+                  return float(value.replace(",", ".").strip())
+              except ValueError:
+                  return None
+          
+          measured = extract(r"(\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}:\d{2})")
+          temperature = number(extract(r"Außentemperatur\s+(-?\d+[,.]\d+)\s*°C"))
+          humidity = extract(r"Luftfeuchte\s+(\d+)\s*%")
+          pressure = number(extract(r"Luftdruck\s+(\d+[,.]\d+)\s*mbar"))
+          
+          wind = re.search(
+              r"Windgeschwindigkeit\s+([0-9]+(?:[,.][0-9]+)?)\s*km/h\s*([A-Za-zÄÖÜäöüß]+)",
+              text, re.I
+          )
+          gust = re.search(
+              r"Böen\s+Geschwindigkeit\s+([0-9]+(?:[,.][0-9]+)?)\s*km/h\s*([A-Za-zÄÖÜäöüß]+)",
+              text, re.I
+          )
+          
+          wind_kmh = number(wind.group(1)) if wind else None
+          wind_direction = wind.group(2).upper() if wind else None
+          gust_kmh = number(gust.group(1)) if gust else None
+          gust_direction = gust.group(2).upper() if gust else None
+          
+          missing = []
+          for name, value in [
+              ("Temperatur", temperature),
+              ("Luftfeuchte", humidity),
+              ("Luftdruck", pressure),
+              ("Wind", wind_kmh),
+              ("Böen", gust_kmh)
+          ]:
+              if value is None:
+                  missing.append(name)
+          if missing:
+              raise SystemExit("Fehlende Werte: " + ", ".join(missing))
+          
+          result = {
+              "location": {
+                  "name": "Kostebrau, Lauchhammer",
+                  "city": "Lauchhammer",
+                  "latitude": 51.527833,
+                  "longitude": 13.831333
+              },
+              "station": {
+                  "name": "DB0LS, Kostebrau",
+                  "software": "WeeWX",
+                  "hardware": "WS1080"
+              },
+              "source": {
+                  "provider": "Wetterstation Kostebrau / Lausitzlink",
+                  "url": url
+              },
+              "measuredAt": (
+                  datetime.strptime(measured, "%d.%m.%Y %H:%M:%S").isoformat()
+                  if measured else None
+              ),
+              "temperatureC": temperature,
+              "humidityPercent": int(humidity),
+              "pressureHpa": pressure,
+              "windKmh": wind_kmh,
+              "windDirection": wind_direction,
+              "gustKmh": gust_kmh,
+              "gustDirection": gust_direction,
+              "status": "ok"
+          }
+          
+          with open("weather.json", "w", encoding="utf-8") as f:
+              json.dump(result, f, ensure_ascii=False, indent=2)
+              f.write("\n")
+          PY
+
+      - name: Wetterdaten committen
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add weather.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Aktualisiere Wetterdaten Kostebrau"
+          git push
