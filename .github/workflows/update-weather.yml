@@ -23,7 +23,7 @@ jobs:
           import re
           import urllib.request
           from datetime import datetime
-          
+
           url = "https://wetter.lausitzlink.de/"
           req = urllib.request.Request(
               url,
@@ -31,17 +31,17 @@ jobs:
           )
           with urllib.request.urlopen(req, timeout=30) as response:
               raw = response.read().decode("utf-8", errors="replace")
-          
+
           text = re.sub(r"(?is)<script.*?</script>", " ", raw)
           text = re.sub(r"(?is)<style.*?</style>", " ", text)
           text = re.sub(r"(?s)<[^>]+>", " ", text)
           text = html.unescape(text)
           text = re.sub(r"\s+", " ", text).strip()
-          
+
           def extract(pattern):
               m = re.search(pattern, text, re.I | re.S)
               return m.group(1).strip() if m else None
-          
+
           def number(value):
               if value is None:
                   return None
@@ -49,12 +49,12 @@ jobs:
                   return float(value.replace(",", ".").strip())
               except ValueError:
                   return None
-          
+
           measured = extract(r"(\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}:\d{2})")
           temperature = number(extract(r"Außentemperatur\s+(-?\d+[,.]\d+)\s*°C"))
           humidity = extract(r"Luftfeuchte\s+(\d+)\s*%")
           pressure = number(extract(r"Luftdruck\s+(\d+[,.]\d+)\s*mbar"))
-          
+
           wind = re.search(
               r"Windgeschwindigkeit\s+([0-9]+(?:[,.][0-9]+)?)\s*km/h\s*([A-Za-zÄÖÜäöüß]+)",
               text, re.I
@@ -63,25 +63,35 @@ jobs:
               r"Böen\s+Geschwindigkeit\s+([0-9]+(?:[,.][0-9]+)?)\s*km/h\s*([A-Za-zÄÖÜäöüß]+)",
               text, re.I
           )
-          
+
           wind_kmh = number(wind.group(1)) if wind else None
           wind_direction = wind.group(2).upper() if wind else None
           gust_kmh = number(gust.group(1)) if gust else None
           gust_direction = gust.group(2).upper() if gust else None
-          
+
+          # Niederschlag: WeeWX liefert die Gesamtmenge sowie die aktuelle
+          # und maximale Regenrate in cm bzw. cm/h.
+          rain_total_cm = number(extract(r"Regen\s+([0-9]+(?:[,.][0-9]+)?)\s*cm\s+Gesamt"))
+          rain_rate_cm_h = number(extract(r"Regen-Rate\s+([0-9]+(?:[,.][0-9]+)?)\s*cm/h"))
+          max_rain_rate_cm_h = number(extract(r"Max Regen-Rate\s+([0-9]+(?:[,.][0-9]+)?)\s*cm/h"))
+
           missing = []
           for name, value in [
               ("Temperatur", temperature),
               ("Luftfeuchte", humidity),
               ("Luftdruck", pressure),
               ("Wind", wind_kmh),
-              ("Böen", gust_kmh)
+              ("Böen", gust_kmh),
+              ("Regen", rain_total_cm),
+              ("Regen-Rate", rain_rate_cm_h),
+              ("Max Regen-Rate", max_rain_rate_cm_h)
           ]:
               if value is None:
                   missing.append(name)
+
           if missing:
               raise SystemExit("Fehlende Werte: " + ", ".join(missing))
-          
+
           result = {
               "location": {
                   "name": "Kostebrau, Lauchhammer",
@@ -109,9 +119,12 @@ jobs:
               "windDirection": wind_direction,
               "gustKmh": gust_kmh,
               "gustDirection": gust_direction,
+              "rainTotalCm": rain_total_cm,
+              "rainRateCmH": rain_rate_cm_h,
+              "maxRainRateCmH": max_rain_rate_cm_h,
               "status": "ok"
           }
-          
+
           with open("weather.json", "w", encoding="utf-8") as f:
               json.dump(result, f, ensure_ascii=False, indent=2)
               f.write("\n")
