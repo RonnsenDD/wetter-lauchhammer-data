@@ -1,0 +1,16 @@
+{
+  "location": {
+    "name": "Kostebrau, Lauchhammer",
+    "city": "Lauchhammer"
+  },
+  "station": {
+    "name": "DB0LS, Kostebrau",
+    "software": "WeeWX",
+    "hardware": "WS1080"
+  },
+  "source": {
+    "provider": "Wetterstation Kostebrau / Lausitzlink",
+    "url": "https://wetter.lausitzlink.de/"
+  },
+  "status": "waiting-for-first-update"
+}
