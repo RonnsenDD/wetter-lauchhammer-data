@@ -14,13 +14,13 @@
     "provider": "Wetterstation Kostebrau / Lausitzlink",
     "url": "https://wetter.lausitzlink.de/"
   },
-  "measuredAt": "2026-09-21T19:35:00",
-  "temperatureC": 13.5,
-  "humidityPercent": 79,
-  "pressureHpa": 1006.6,
-  "windKmh": 10.0,
-  "windDirection": "W",
-  "gustKmh": 24.0,
-  "gustDirection": "W",
+  "measuredAt": "2026-09-21T19:45:00",
+  "temperatureC": 13.6,
+  "humidityPercent": 78,
+  "pressureHpa": 1006.7,
+  "windKmh": 11.0,
+  "windDirection": "WNW",
+  "gustKmh": 22.0,
+  "gustDirection": "WNW",
   "status": "ok"
 }
