@@ -15,9 +15,9 @@
     "url": "https://wetter.lausitzlink.de/"
   },
   "weather": {
-    "code": 3,
-    "description": "Bewölkt",
-    "icon": "☁️",
+    "code": 2,
+    "description": "Teilweise bewölkt",
+    "icon": "⛅",
     "isDay": 0,
     "provider": "DWD ICON via Open-Meteo"
   },
