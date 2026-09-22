@@ -18,7 +18,7 @@
     "code": 1,
     "description": "Heiter",
     "icon": "🌤️",
-    "isDay": 0,
+    "isDay": 1,
     "provider": "DWD ICON via Open-Meteo"
   },
   "measuredAt": "2026-09-22T00:20:00",
