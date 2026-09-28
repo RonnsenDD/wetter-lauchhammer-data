@@ -21,8 +21,8 @@
     "isDay": 0,
     "provider": "DWD ICON via Open-Meteo"
   },
-  "measuredAt": "2026-09-28T23:35:00",
-  "temperatureC": 16.8,
+  "measuredAt": "2026-09-28T23:50:00",
+  "temperatureC": 16.7,
   "humidityPercent": 73,
   "pressureHpa": 1005.4,
   "windKmh": 8.0,
