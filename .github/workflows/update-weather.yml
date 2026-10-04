@@ -2,8 +2,14 @@ name: Wetterdaten Kostebrau aktualisieren
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    # Bewusst nicht auf den Viertelstundenwechsel legen:
+    # GitHub weist darauf hin, dass Zeitpläne bei hoher Last
+    # verzögert oder verworfen werden können.
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/update-weather.yml"
 
 permissions:
   contents: write
@@ -74,8 +80,6 @@ jobs:
           rain_rate_cm_h = number(extract(r"Regen-Rate\s+([0-9]+(?:[,.][0-9]+)?)\s*cm/h"))
           max_rain_rate_cm_h = number(extract(r"Max Regen-Rate\s+([0-9]+(?:[,.][0-9]+)?)\s*cm/h"))
 
-          # Aktueller Wetterzustand aus dem DWD-ICON-Modell über Open-Meteo.
-          # Die verwendeten weather_code-Werte entsprechen den WMO-Wettercodes.
           lat = 51.527833
           lon = 13.831333
           params = urllib.parse.urlencode({
@@ -89,7 +93,7 @@ jobs:
               weather_url,
               headers={"User-Agent": "Lagezentrum-Lauchhammer/1.0"}
           )
-          with urllib.request.urlopen(weather_req, timeout=30) as response:
+          with urllib.request.urlopen(weather_url, timeout=30) as response:
               model_data = json.loads(response.read().decode("utf-8"))
 
           current_model = model_data.get("current", {})
