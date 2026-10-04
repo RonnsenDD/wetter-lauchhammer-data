@@ -2,9 +2,9 @@ name: Wetterdaten Kostebrau aktualisieren
 
 on:
   schedule:
-    # Viertelstündlicher Abruf, bewusst nicht auf den Stundenwechsel gelegt.
-    # Die Zeitzone wird explizit gesetzt, damit Sommer-/Winterzeit korrekt ist.
-    - cron: "3,18,33,48 * * * *"
+    # Alle 5 Minuten. Start bei Minute 2, um die typische GitHub-Last
+    # zum Stundenwechsel zu vermeiden.
+    - cron: "2/5 * * * *"
       timezone: "Europe/Berlin"
   workflow_dispatch:
   push:
@@ -32,10 +32,7 @@ jobs:
           from datetime import datetime, timezone
 
           url = "https://wetter.lausitzlink.de/"
-          req = urllib.request.Request(
-              url,
-              headers={"User-Agent": "Lagezentrum-Lauchhammer/1.0"}
-          )
+          req = urllib.request.Request(url, headers={"User-Agent": "Lagezentrum-Lauchhammer/1.0"})
           with urllib.request.urlopen(req, timeout=30) as response:
               raw = response.read().decode("utf-8", errors="replace")
 
@@ -62,14 +59,8 @@ jobs:
           humidity = extract(r"Luftfeuchte\s+(\d+)\s*%")
           pressure = number(extract(r"Luftdruck\s+(\d+[,.]\d+)\s*mbar"))
 
-          wind = re.search(
-              r"Windgeschwindigkeit\s+([0-9]+(?:[,.][0-9]+)?)\s*km/h\s*([A-Za-zÄÖÜäöüß]+)",
-              text, re.I
-          )
-          gust = re.search(
-              r"Böen\s+Geschwindigkeit\s+([0-9]+(?:[,.][0-9]+)?)\s*km/h\s*([A-Za-zÄÖÜäöüß]+)",
-              text, re.I
-          )
+          wind = re.search(r"Windgeschwindigkeit\s+([0-9]+(?:[,.][0-9]+)?)\s*km/h\s*([A-Za-zÄÖÜäöüß]+)", text, re.I)
+          gust = re.search(r"Böen\s+Geschwindigkeit\s+([0-9]+(?:[,.][0-9]+)?)\s*km/h\s*([A-Za-zÄÖÜäöüß]+)", text, re.I)
 
           wind_kmh = number(wind.group(1)) if wind else None
           wind_direction = wind.group(2).upper() if wind else None
@@ -89,10 +80,6 @@ jobs:
               "timezone": "Europe/Berlin"
           })
           weather_url = f"https://api.open-meteo.com/v1/dwd-icon?{params}"
-          weather_req = urllib.request.Request(
-              weather_url,
-              headers={"User-Agent": "Lagezentrum-Lauchhammer/1.0"}
-          )
           with urllib.request.urlopen(weather_url, timeout=30) as response:
               model_data = json.loads(response.read().decode("utf-8"))
 
@@ -101,97 +88,42 @@ jobs:
           is_day = current_model.get("is_day")
 
           weather_map = {
-              0: ("Klar", "☀️"),
-              1: ("Heiter", "🌤️"),
-              2: ("Teilweise bewölkt", "⛅"),
-              3: ("Bewölkt", "☁️"),
-              45: ("Nebel", "🌫️"),
-              48: ("Nebel", "🌫️"),
-              51: ("Leichter Nieselregen", "🌦️"),
-              53: ("Nieselregen", "🌦️"),
-              55: ("Starker Nieselregen", "🌧️"),
-              56: ("Gefrierender Nieselregen", "🌧️"),
-              57: ("Starker gefrierender Nieselregen", "🌧️"),
-              61: ("Leichter Regen", "🌧️"),
-              63: ("Regen", "🌧️"),
-              65: ("Starker Regen", "🌧️"),
-              66: ("Leichter gefrierender Regen", "🌧️"),
-              67: ("Starker gefrierender Regen", "🌧️"),
-              71: ("Leichter Schneefall", "❄️"),
-              73: ("Schneefall", "❄️"),
-              75: ("Starker Schneefall", "❄️"),
-              77: ("Schneekörner", "🌨️"),
-              80: ("Leichte Regenschauer", "🌦️"),
-              81: ("Regenschauer", "🌦️"),
-              82: ("Starke Regenschauer", "🌧️"),
-              85: ("Leichte Schneeschauer", "🌨️"),
-              86: ("Starke Schneeschauer", "🌨️"),
-              95: ("Gewitter", "⛈️"),
-              96: ("Gewitter mit Hagel", "⛈️"),
-              99: ("Starkes Gewitter mit Hagel", "⛈️")
+              0: ("Klar", "☀️"), 1: ("Heiter", "🌤️"), 2: ("Teilweise bewölkt", "⛅"),
+              3: ("Bewölkt", "☁️"), 45: ("Nebel", "🌫️"), 48: ("Nebel", "🌫️"),
+              51: ("Leichter Nieselregen", "🌦️"), 53: ("Nieselregen", "🌦️"),
+              55: ("Starker Nieselregen", "🌧️"), 56: ("Gefrierender Nieselregen", "🌧️"),
+              57: ("Starker gefrierender Nieselregen", "🌧️"), 61: ("Leichter Regen", "🌧️"),
+              63: ("Regen", "🌧️"), 65: ("Starker Regen", "🌧️"), 66: ("Leichter gefrierender Regen", "🌧️"),
+              67: ("Starker gefrierender Regen", "🌧️"), 71: ("Leichter Schneefall", "❄️"),
+              73: ("Schneefall", "❄️"), 75: ("Starker Schneefall", "❄️"), 77: ("Schneekörner", "🌨️"),
+              80: ("Leichte Regenschauer", "🌦️"), 81: ("Regenschauer", "🌦️"), 82: ("Starke Regenschauer", "🌧️"),
+              85: ("Leichte Schneeschauer", "🌨️"), 86: ("Starke Schneeschauer", "🌨️"),
+              95: ("Gewitter", "⛈️"), 96: ("Gewitter mit Hagel", "⛈️"), 99: ("Starkes Gewitter mit Hagel", "⛈️")
           }
-
-          weather_description, weather_icon = weather_map.get(
-              weather_code,
-              ("Wetterlage unbekannt", "🌡️")
-          )
+          weather_description, weather_icon = weather_map.get(weather_code, ("Wetterlage unbekannt", "🌡️"))
 
           missing = []
           for name, value in [
-              ("Temperatur", temperature),
-              ("Luftfeuchte", humidity),
-              ("Luftdruck", pressure),
-              ("Wind", wind_kmh),
-              ("Böen", gust_kmh),
-              ("Regen", rain_total_cm),
-              ("Regen-Rate", rain_rate_cm_h),
-              ("Max Regen-Rate", max_rain_rate_cm_h),
+              ("Temperatur", temperature), ("Luftfeuchte", humidity), ("Luftdruck", pressure),
+              ("Wind", wind_kmh), ("Böen", gust_kmh), ("Regen", rain_total_cm),
+              ("Regen-Rate", rain_rate_cm_h), ("Max Regen-Rate", max_rain_rate_cm_h),
               ("Wettercode", weather_code)
           ]:
               if value is None:
                   missing.append(name)
-
           if missing:
               raise SystemExit("Fehlende Werte: " + ", ".join(missing))
 
           result = {
-              "location": {
-                  "name": "Kostebrau, Lauchhammer",
-                  "city": "Lauchhammer",
-                  "latitude": lat,
-                  "longitude": lon
-              },
-              "station": {
-                  "name": "DB0LS, Kostebrau",
-                  "software": "WeeWX",
-                  "hardware": "WS1080"
-              },
-              "source": {
-                  "provider": "Wetterstation Kostebrau / Lausitzlink",
-                  "url": url
-              },
-              "weather": {
-                  "code": weather_code,
-                  "description": weather_description,
-                  "icon": weather_icon,
-                  "isDay": is_day,
-                  "provider": "DWD ICON via Open-Meteo"
-              },
-              "measuredAt": (
-                  datetime.strptime(measured, "%d.%m.%Y %H:%M:%S").isoformat()
-                  if measured else None
-              ),
+              "location": {"name": "Kostebrau, Lauchhammer", "city": "Lauchhammer", "latitude": lat, "longitude": lon},
+              "station": {"name": "DB0LS, Kostebrau", "software": "WeeWX", "hardware": "WS1080"},
+              "source": {"provider": "Wetterstation Kostebrau / Lausitzlink", "url": url},
+              "weather": {"code": weather_code, "description": weather_description, "icon": weather_icon, "isDay": is_day, "provider": "DWD ICON via Open-Meteo"},
+              "measuredAt": datetime.strptime(measured, "%d.%m.%Y %H:%M:%S").isoformat() if measured else None,
               "retrievedAt": datetime.now(timezone.utc).isoformat(),
-              "temperatureC": temperature,
-              "humidityPercent": int(humidity),
-              "pressureHpa": pressure,
-              "windKmh": wind_kmh,
-              "windDirection": wind_direction,
-              "gustKmh": gust_kmh,
-              "gustDirection": gust_direction,
-              "rainTotalCm": rain_total_cm,
-              "rainRateCmH": rain_rate_cm_h,
-              "maxRainRateCmH": max_rain_rate_cm_h,
+              "temperatureC": temperature, "humidityPercent": int(humidity), "pressureHpa": pressure,
+              "windKmh": wind_kmh, "windDirection": wind_direction, "gustKmh": gust_kmh, "gustDirection": gust_direction,
+              "rainTotalCm": rain_total_cm, "rainRateCmH": rain_rate_cm_h, "maxRainRateCmH": max_rain_rate_cm_h,
               "status": "ok"
           }
 
