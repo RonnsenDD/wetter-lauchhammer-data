@@ -2,10 +2,10 @@ name: Wetterdaten Kostebrau aktualisieren
 
 on:
   schedule:
-    # Bewusst nicht auf den Viertelstundenwechsel legen:
-    # GitHub weist darauf hin, dass Zeitpläne bei hoher Last
-    # verzögert oder verworfen werden können.
-    - cron: "7,22,37,52 * * * *"
+    # Viertelstündlicher Abruf, bewusst nicht auf den Stundenwechsel gelegt.
+    # Die Zeitzone wird explizit gesetzt, damit Sommer-/Winterzeit korrekt ist.
+    - cron: "3,18,33,48 * * * *"
+      timezone: "Europe/Berlin"
   workflow_dispatch:
   push:
     paths:
@@ -29,7 +29,7 @@ jobs:
           import re
           import urllib.parse
           import urllib.request
-          from datetime import datetime
+          from datetime import datetime, timezone
 
           url = "https://wetter.lausitzlink.de/"
           req = urllib.request.Request(
@@ -181,6 +181,7 @@ jobs:
                   datetime.strptime(measured, "%d.%m.%Y %H:%M:%S").isoformat()
                   if measured else None
               ),
+              "retrievedAt": datetime.now(timezone.utc).isoformat(),
               "temperatureC": temperature,
               "humidityPercent": int(humidity),
               "pressureHpa": pressure,
@@ -205,5 +206,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add weather.json
           git diff --cached --quiet && exit 0
-          git commit -m "Ergänzt aktuelle Wetterlage"
+          git commit -m "Aktualisiere Wetterdaten"
           git push
