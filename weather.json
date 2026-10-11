@@ -21,17 +21,17 @@
     "isDay": 0,
     "provider": "DWD ICON via Open-Meteo"
   },
-  "measuredAt": "2026-10-11T22:35:00",
-  "retrievedAt": "2026-10-11T20:37:12.307246+00:00",
+  "measuredAt": "2026-10-11T22:50:00",
+  "retrievedAt": "2026-10-11T20:54:41.360881+00:00",
   "temperatureC": 8.1,
   "humidityPercent": 96,
   "pressureHpa": 995.5,
-  "windKmh": 5.0,
-  "windDirection": "W",
-  "gustKmh": 10.0,
+  "windKmh": 6.0,
+  "windDirection": "WSW",
+  "gustKmh": 11.0,
   "gustDirection": "WSW",
   "rainTotalCm": 0.36,
-  "rainRateCmH": 0.2,
+  "rainRateCmH": 0.0,
   "maxRainRateCmH": 0.84,
   "status": "ok"
 }
