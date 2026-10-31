@@ -1,15 +1,7 @@
 name: Wetterdaten Kostebrau aktualisieren
 
 on:
-  schedule:
-    # Alle 5 Minuten. Start bei Minute 2, um die typische GitHub-Last
-    # zum Stundenwechsel zu vermeiden.
-    - cron: "2/5 * * * *"
-      timezone: "Europe/Berlin"
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/update-weather.yml"
 
 permissions:
   contents: write
