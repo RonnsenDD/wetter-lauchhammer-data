@@ -22,7 +22,7 @@
     "provider": "DWD ICON via Open-Meteo"
   },
   "measuredAt": "2026-11-03T11:25:00",
-  "retrievedAt": "2026-11-03T16:07:16.024574+00:00",
+  "retrievedAt": "2026-11-03T21:45:36.239228+00:00",
   "temperatureC": 7.1,
   "humidityPercent": 79,
   "pressureHpa": 1015.6,
